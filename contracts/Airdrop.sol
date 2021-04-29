@@ -27,7 +27,7 @@ contract Airdrop {
         _;
     }
     modifier checkStatus(AirdropStatus s) {
-        require(airdropStatus == s, "The contract is not in the right state.");
+        require(airdropStatus == s, "The contract is not in the right state");
         _;
     }
 
