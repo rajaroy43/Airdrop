@@ -8,30 +8,56 @@ contract Airdrop {
     uint256 public currentAirdropAmount;
     uint256 public maxAirdropAmount = 10000 * 10**18;
     mapping(address => bool) public processedAirdrops;
+    enum AirdropStatus {
+        AirdropClaimingInitiated,
+        AirdropClaimingStarted,
+        AirdropClaimingFinished
+    }
+    AirdropStatus public airdropStatus;
     event AirdropProcessed(
         address indexed recipient,
         uint256 amount,
         uint256 date
     );
+    event withDrawAirdrop(address indexed admin, uint256 amount, uint256 date);
+    event updateAdminEvent(address indexed newAdmin, uint256 date);
+    event airdropStatusEvent(AirdropStatus status, uint256 date);
     modifier onlyOwner() {
         require(msg.sender == admin, "only admin");
+        _;
+    }
+    modifier checkStatus(AirdropStatus s) {
+        require(airdropStatus == s, "The contract is not in the right state.");
         _;
     }
 
     constructor(address _mkToken) {
         admin = msg.sender;
         token = IERC20(_mkToken);
+        airdropStatus = AirdropStatus.AirdropClaimingInitiated;
+        emit airdropStatusEvent(airdropStatus, block.timestamp);
     }
 
     function updateAdmin(address _newAdmin) public onlyOwner {
         admin = _newAdmin;
+        emit updateAdminEvent(_newAdmin, block.timestamp);
+    }
+
+    function startClaimingAirdrop() public onlyOwner {
+        airdropStatus = AirdropStatus.AirdropClaimingStarted;
+        emit airdropStatusEvent(airdropStatus, block.timestamp);
+    }
+
+    function endClaimingAirdrop() public onlyOwner {
+        airdropStatus = AirdropStatus.AirdropClaimingFinished;
+        emit airdropStatusEvent(airdropStatus, block.timestamp);
     }
 
     function claimTokens(
         address recipient,
         uint256 amount,
         bytes calldata signature
-    ) external {
+    ) external checkStatus(AirdropStatus.AirdropClaimingStarted) {
         bytes32 messageHash =
             getEthSignedMessagehash(
                 keccak256(abi.encodePacked(recipient, amount))
@@ -46,7 +72,7 @@ contract Airdrop {
             "airdropped 100% of the tokens"
         );
         currentAirdropAmount += amount;
-        processedAirdrops[recipient]=true;
+        processedAirdrops[recipient] = true;
         token.transfer(recipient, amount);
         emit AirdropProcessed(recipient, amount, block.timestamp);
     }
@@ -90,5 +116,19 @@ contract Airdrop {
             s := mload(add(sig, 64))
             v := byte(0, mload(add(sig, 96)))
         }
+    }
+
+    function withDrawLeftAirdrop()
+        public
+        onlyOwner
+        checkStatus(AirdropStatus.AirdropClaimingFinished)
+    {
+        require(
+            currentAirdropAmount < maxAirdropAmount,
+            "All tokens Airdropped"
+        );
+        uint256 ammountLeft = maxAirdropAmount - currentAirdropAmount;
+        token.transfer(admin, ammountLeft);
+        emit withDrawAirdrop(admin, ammountLeft, block.timestamp);
     }
 }
