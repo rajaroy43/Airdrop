@@ -17,7 +17,7 @@ contract("airdrop", function (/* accounts */) {
     const { address: defaultRecipient } = web3.eth.accounts.create();
     params = { recipient: defaultRecipient, amount: wei("100", "ether"), ...params };
     const message = web3.utils.soliditySha3({ t: "address", v: params.recipient }, { t: "uint256", v: params.amount });
-    const privatekey = "c72dd63524f4b1a549e2494a3ad40ba1dd99d266c3602148f5fdd7fd3acda86b";
+    const privatekey = "ADMIN_PRIVATE_KEY";
     const { signature } = web3.eth.accounts.sign(message, privatekey);
     return { signature, recipient: params.recipient, amount: params.amount };
   };
